@@ -12,8 +12,9 @@ class Star
     sf::Vector2f position;
     sf::Vector2f velocity;
     sf::Vector2f acceleration;
-    bool isCenter = false;
     sf::CircleShape shape;
+    bool delete_flag = false;
+    float radius;
     float mass;
 
     public:
@@ -25,7 +26,8 @@ class Star
 
         acceleration = sf::Vector2f(0.f, 0.f);
         velocity = sf::Vector2f(0.f, 0.f);
-        mass = Random::getFloat(10.0f, 50.f);
+        mass = Random::getFloat(1.0f, 25.f);
+        radius = Random::getFloat(2.f, 10.f);
     }
 
     //Getters
@@ -33,7 +35,12 @@ class Star
     {
         return position;
     }
-    
+
+    float getRadius() const
+    {
+        return radius;
+    }
+
     sf::Vector2f getVelocity() const
     {
         return velocity;
@@ -48,10 +55,10 @@ class Star
     {
         return mass;
     }
-    //for testing purposes, will be removed later
-    bool getIsCenter() const
+
+    bool getDeleteFlag() const
     {
-        return isCenter;
+        return delete_flag;
     }
 
     //Setter
@@ -81,9 +88,9 @@ class Star
     }
 
     //for testing purposes, will be removed later
-    void setIsCenter(bool center)
+    void setDeleteFlag(bool flag)
     {
-        isCenter = center;
+        delete_flag = flag;
     }
 
     

@@ -1,17 +1,44 @@
 #pragma once
 #include "star.hpp"
 #include <SFML/Graphics.hpp>
+#include <unordered_map>
+#include <algorithm>
 //arbi
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define G 1.0f
-#define SOFTENING 0.1f
+#define SOFTENING 0.5f
+#define Cell_SIZE 50.0f
+
+struct Cell
+{
+    private:
+    int x;
+    int y;
+
+    public:
+
+    Cell(int x, int y) : x(x), y(y) {}
+
+    //getters
+
+    int getX() const
+    {
+        return x;
+    }
+
+    int getY() const
+    {
+        return y;
+    }
+};
 
 class Universe
 {
     private:
         int starCount;
         std::vector<Star> stars;
+        std::unordered_map<int, std::vector<Star*>> starGrid;
     public:
 
         Universe(int starCount = 1000) : starCount(starCount)
@@ -33,24 +60,6 @@ class Universe
             }
         }
 
-        //Getters
-        int getStarCount() const
-        {
-            return starCount;
-        }
-        //getArray of stars
-        const std::vector<Star>& getStars() const
-        {
-            return stars;
-        }
-
-        //Setters
-
-        void setStarCount(int newStarCount)
-        {
-            starCount = newStarCount;
-        }
-
         void updateStars(float dt)
         {
             //Used to test the forces and movement of stars, will be removed later
@@ -66,31 +75,132 @@ class Universe
                 star.setVelocity(star.getVelocity() + star.getAcceleration() * (dt/2));
             }
             
-            //recalculate acceleration based on new positions
+            //Update position by half step
+            for(Star& star : stars) 
+            {
+                star.setPosition(star.getPosition() + star.getVelocity() * dt);
+            }
+
+            //Update grid
+            buildGrid();
+
+            checkCollision();
+
+            stars.erase(std::remove_if(stars.begin(), stars.end(), [](const Star& s) { return s.getDeleteFlag(); }), stars.end());
+
+            //Calculate forces and update acceleration
             for(Star& star : stars)
             {
                 star.setAcceleration({0.f, 0.f});
-
-                for(Star& star2 : stars)
+                Cell cell = getCell(star.getPosition());
+                for(int dx = -1; dx <= 1; dx++)
                 {
-                    if(&star != &star2)
+                    for(int dy = -1; dy <= 1; dy++)
                     {
-                        star.setAcceleration(star.getAcceleration() + calculateForce(star, star2) / star.getMass());
+                        Cell neighborCell(cell.getX() + dx, cell.getY() + dy);
+                        int key = hash(neighborCell);
+
+                        if(starGrid.find(key) != starGrid.end())
+                        {
+                            for(Star* otherStar : starGrid[key])
+                            {
+                                if(&star != otherStar)
+                                {
+                                    star.setAcceleration(star.getAcceleration() + calculateForce(star, *otherStar) / star.getMass());
+                                }
+                            }
+                        }
                     }
+                }
+
+                for(Star& star : stars) 
+                {
+                    star.setVelocity(star.getVelocity() + star.getAcceleration() * (dt * 0.5f));
                 }
             }
 
-            //move the other half of the step using new velocity
+    
+        }
+
+
+        sf::Vector2f gridCoordinate(const sf::Vector2f& position) const
+        {
+            return sf::Vector2f(std::floor(position.x / Cell_SIZE), std::floor(position.y / Cell_SIZE));
+        }
+
+        Cell getCell(const sf::Vector2f& position) const
+        {
+            return Cell{static_cast<int>(std::floor(position.x / Cell_SIZE)),static_cast<int>(std::floor(position.y / Cell_SIZE))};
+        }
+
+        int hash(const Cell& cell) const
+        {
+            return cell.getX() * 73856093 ^ cell.getY() * 19349663;
+        }
+
+        void buildGrid()
+        {
+            starGrid.clear();
             for(Star& star : stars)
             {
-                star.setVelocity(star.getVelocity() + star.getAcceleration() * (dt/2));
-                star.setPosition(star.getPosition() + star.getVelocity() * dt);
+                Cell cell = getCell(star.getPosition());
+                int key = hash(cell);
+                starGrid[key].push_back(&star);
             }
         }
-        //used for testing purposes, will be removed later
-        void printStarpos() const
+
+        void checkCollision()
         {
-            std::cout << stars[0].getPosition().x << ", " << stars[0].getPosition().y << std::endl;
+            for (Star& star : stars)
+            {
+                Cell cell = getCell(star.getPosition());
+
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        Cell neighborCell(cell.getX() + dx, cell.getY() + dy);
+                        int key = hash(neighborCell);
+
+                        if (starGrid.find(key) != starGrid.end())
+                        {
+                            for (Star* otherStar : starGrid[key])
+                            {
+                                if (&star != otherStar)
+                                {
+                                    float distanceSquared = calculateDistanceSquared(star, *otherStar);
+                                    float radiusSum = star.getRadius() + otherStar->getRadius();
+
+                                    if (distanceSquared < (radiusSum * radiusSum))
+                                    {
+                                        star.setDeleteFlag(true);
+                                        otherStar->setDeleteFlag(true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //Getters
+        int getStarCount() const
+        {
+            return starCount;
+        }
+        
+        //getArray of stars
+        const std::vector<Star>& getStars() const
+        {
+            return stars;
+        }
+
+        //Setters
+
+        void setStarCount(int newStarCount)
+        {
+            starCount = newStarCount;
         }
 
         //Math functions
@@ -127,21 +237,3 @@ class Universe
             return direction * forceMagnitude;
         }
 };
-
-
-/*
-       sf::Vector2f calculateDistance(const sf::Vector2f& object)
-        {
-            sf::Vector2f center(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
-            
-            return normalize(center - object);
-        }
-
-        sf::Vector2f tangentDirection(const sf::Vector2f& direction)
-        {
-            sf::Vector2f tangent(direction.y, -direction.x);
-            tangent = normalize(tangent);
-        
-            return tangent;
-        }
-*/
