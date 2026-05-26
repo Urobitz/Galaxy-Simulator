@@ -19,22 +19,31 @@ class Renderer
         {
             for(int i = 0; i < universe.getStarCount(); i++)
             {
-                if(universe.getStars()[i].getIsCenter() != true)
+
+                sf::CircleShape starShape(universe.getStars()[i].getMass() * 0.5f);
+                starShape.setPosition(universe.getStars()[i].getPosition());
+                if(universe.getStars()[i].getMass() < 5.0f)
                 {
-                    sf::CircleShape starShape(universe.getStars()[i].getMass() * 0.05f);
-                    starShape.setFillColor(sf::Color::White);
-                    starShape.setPosition(universe.getStars()[i].getPosition());
+                    starShape.setFillColor(sf::Color(255,243,59));
+                    window.draw(starShape);
+                }
+
+                else if(universe.getStars()[i].getMass() < 10.0f)
+                {
+                    starShape.setFillColor(sf::Color(243,144,63));
+                    window.draw(starShape);
+                }
+                else if(universe.getStars()[i].getMass() < 15.0f)
+                {
+                    starShape.setFillColor(sf::Color(237,104,60));
                     window.draw(starShape);
                 }
                 else
                 {
-
-                    //for testing purposes, will be removed later
-                    sf::CircleShape starShape(2.0f);
-                    starShape.setFillColor(sf::Color::Red);
-                    starShape.setPosition(universe.getStars()[i].getPosition());
+                    starShape.setFillColor(sf::Color(233,62,58));
                     window.draw(starShape);
                 }
+            
             }
         }
 
