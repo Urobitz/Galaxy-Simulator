@@ -8,6 +8,7 @@
 #include "universe.hpp"
 #include "random.hpp"
 #include "renderer.hpp"
+#include "QuadTree.hpp"
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
@@ -25,7 +26,12 @@ int main()
     //Create clock for deltatime
     sf::Clock clock;
 
-    while(renderer.getWindow().isOpen())
+    QuadTree tree;
+
+    tree.insert(0, {100,200});
+    tree.insert(0, {110,210});
+
+    /*while(renderer.getWindow().isOpen())
     {
         float dt = clock.restart().asSeconds();
 
@@ -42,7 +48,7 @@ int main()
         renderer.drawUniverse(universe);
         renderer.displayWindow();
 
-    }
+    }*/
 
 
 }
