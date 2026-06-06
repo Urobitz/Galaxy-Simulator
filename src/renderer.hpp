@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include "universe.hpp"
+#include "QuadTree.hpp"
 
 class Renderer
 {
@@ -20,7 +21,7 @@ class Renderer
             for(int i = 0; i < universe.getStarCount(); i++)
             {
 
-                sf::CircleShape starShape(universe.getStars()[i].getMass() * 0.5f);
+                sf::CircleShape starShape(universe.getStars()[i].getMass() * 0.1f);
                 starShape.setPosition(universe.getStars()[i].getPosition());
                 if(universe.getStars()[i].getMass() < 5.0f)
                 {

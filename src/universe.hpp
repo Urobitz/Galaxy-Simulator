@@ -1,20 +1,23 @@
 #pragma once
 #include "star.hpp"
 #include <SFML/Graphics.hpp>
+#include "QuadTree.hpp"
 //arbi
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define G 1.0f
 #define SOFTENING 0.1f
+#define THETA 0.5f
 
 class Universe
 {
     private:
         int starCount;
         std::vector<Star> stars;
+        QuadTree quadTree;
     public:
 
-        Universe(int starCount = 1000) : starCount(starCount)
+        Universe(int starCount = 1000) : starCount(starCount), quadTree()
         {
             for(int i = 0; i < starCount; i++)
             {
@@ -53,11 +56,23 @@ class Universe
 
         void updateStars(float dt)
         {
-            //Used to test the forces and movement of stars, will be removed later
 
-           /* stars[0].setAcceleration(sf::Vector2f(0.f, 0.f));
-            stars[0].setMass(1000.0f);
-            stars[0].setIsCenter(true);*/
+            quadTree.clearTree();
+
+            for(Star& star : stars)
+            {
+                quadTree.insert(&star);
+            }
+
+            quadTree.calculateCenterOfMass();
+
+            for(Star& star : stars)
+            {
+               sf::Vector2f force = barnesHutForce(star, 0, quadTree);
+                star.setAcceleration(force / star.getMass());
+                star.setVelocity(star.getVelocity() + star.getAcceleration() * dt);
+                star.setPosition(star.getPosition() + star.getVelocity() * dt);
+            }
 
             //move half a step using current velocity
             for(Star& star : stars)
@@ -125,6 +140,55 @@ class Universe
                 std::cout << "low distance deteceted!!\n log: " << distSqr << std::endl << "force: " << forceMagnitude << std::endl;
             }
             return direction * forceMagnitude;
+        }
+
+        sf::Vector2f calculateForce(const Star& star, sf::Vector2f otherPos, float otherMass)
+        {
+            sf::Vector2f diff = otherPos - star.getPosition();
+            sf::Vector2f direction = normalize(diff);
+            float distSqr = (diff.x * diff.x + diff.y * diff.y) + SOFTENING;
+            float forceMagnitude = (G * star.getMass() * otherMass) / distSqr;
+            return direction * forceMagnitude;
+        }
+
+        sf::Vector2f barnesHutForce(const Star& star, int quadNodeIndex, const QuadTree& tree)
+        {
+            const QuadNode& node = tree.nodes[quadNodeIndex];
+            sf::Vector2f force(0.f, 0.f);
+
+            if(node.totalMass == 0.f)
+            {
+                return force;
+            }
+
+            if(node.isLeaf())
+            {
+                for(Star* otherStar : node.nodeStars)
+                {
+                    if(otherStar != &star)
+                    {
+                        force += calculateForce(star, *otherStar);
+                    }
+                }
+
+                return force;
+            }
+
+            float s = node.nodeBoundary.halfSize * 2; // Size of the region
+            float d = std::sqrt(calculateDistanceSquared(star, Star(node.centerOfMass))); // Distance from star to center of mass
+            if(s/d < THETA)
+            {
+                return calculateForce(star, node.centerOfMass, node.totalMass);
+            }
+            
+            for(int i  = 0; i < 4; i++)
+            {
+                if(node.children[i] != -1)
+                {
+                    force += barnesHutForce(star, node.children[i], tree);
+                }
+            }
+            return force;
         }
 };
 
