@@ -115,10 +115,10 @@ struct QuadTree
 
     QuadTree()
     {
-        nodes.reserve(5000); // Reserve space to avoid frequent reallocations.
-        nodes.emplace_back();
+        nodes.resize(50000); // crea todos los nodos de una vez, nunca realloca
         nodes[0].nodeBoundary.center = sf::Vector2f(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
-        freeNodeIndex++;
+        nodes[0].nodeBoundary.halfSize = std::max(SCREEN_WIDTH, SCREEN_HEIGHT) / 2.0f;
+        freeNodeIndex = 1;
     }
 
     void insert(Star* star)
@@ -147,53 +147,66 @@ struct QuadTree
 private:
 
     void insert(int nodeIndex, Star* star, int depth = 0)
-{
-    if (depth > 20) return; // evitar recursión infinita
-
-    QuadNode& node = nodes[nodeIndex];
-
-    if (node.isLeaf() && node.nodeStars.size() < node.maxCapacity)
     {
-        node.nodeStars.push_back(star);
-    }
-    else
-    {
-        if (node.isLeaf())
+        if (depth > 20)
+            return; // avoid infinite recursion
+
+        QuadNode& node = nodes[nodeIndex];
+
+        if (node.isLeaf() && node.nodeStars.size() < node.maxCapacity)
         {
-            subdivide(nodeIndex);
-
-            for (Star* currentStar : node.nodeStars)
-            {
-                int quadrant = node.getQuadrant(currentStar);
-                insert(node.children[quadrant], currentStar, depth + 1);
-            }
-            node.nodeStars.clear();
+            node.nodeStars.push_back(star);
         }
+        else
+        {
+            if (node.isLeaf())
+            {
+                subdivide(nodeIndex);
 
-        int quadrant = node.getQuadrant(star);
-        insert(node.children[quadrant], star, depth + 1);
+                for (Star* currentStar : node.nodeStars)
+                {
+                    int quadrant = node.getQuadrant(currentStar);
+                    insert(node.children[quadrant], currentStar, depth + 1);
+                }
+                node.nodeStars.clear();
+            }
+
+            int quadrant = node.getQuadrant(star);
+            insert(node.children[quadrant], star, depth + 1);
+        }
     }
-}
 
     void subdivide(int parentIndex)
-{
-    boundary parentBoundary = nodes[parentIndex].nodeBoundary; // guardar ANTES del loop
-
-    for (int i = 0; i < 4; i++)
     {
-        if (freeNodeIndex >= (int)nodes.size())
-            nodes.emplace_back();
+        boundary parentBoundary = nodes[parentIndex].nodeBoundary;
 
-        nodes[parentIndex].children[i] = freeNodeIndex;
-        QuadNode& child = nodes[freeNodeIndex];
-        child.nodeBoundary = nodes[parentIndex].calculateBoundary(i); // usar copia local
-        child.children[0] = child.children[1] = child.children[2] = child.children[3] = -1;
-        child.nodeStars.clear();
-        child.totalMass = 0.0f;
-        child.centerOfMass = {0.0f, 0.0f};
-        freeNodeIndex++;
+        for (int i = 0; i < 4; i++)
+        {
+            
+            nodes[parentIndex].children[i] = freeNodeIndex;
+            QuadNode& child = nodes[freeNodeIndex];
+
+            // calculate boundary from local copy, not from nodes[parentIndex]
+            boundary childBoundary;
+            float offset = parentBoundary.halfSize / 2.0f;
+            childBoundary.halfSize = offset;
+            switch (i)
+            {
+                case 0: childBoundary.center = {parentBoundary.center.x - offset, parentBoundary.center.y - offset}; break;
+                case 1: childBoundary.center = {parentBoundary.center.x + offset, parentBoundary.center.y - offset}; break;
+                case 2: childBoundary.center = {parentBoundary.center.x - offset, parentBoundary.center.y + offset}; break;
+                case 3: childBoundary.center = {parentBoundary.center.x + offset, parentBoundary.center.y + offset}; break;
+            }
+
+            child.nodeBoundary = childBoundary;
+            child.children[0] = child.children[1] = child.children[2] = child.children[3] = -1;
+            child.nodeStars.clear();
+            child.totalMass = 0.0f;
+            child.centerOfMass = {0.0f, 0.0f};
+            freeNodeIndex++;
+        }
     }
-}
+
     void calculateCenterOfMass(int nodeIndex)
     {
         QuadNode& node = nodes[nodeIndex];
@@ -212,11 +225,10 @@ private:
                     node.totalMass += star->getMass();
                     node.centerOfMass += star->getPosition() * star->getMass();
                 }
-                if(node.totalMass > 0.f)
+                if (node.totalMass > 0.f)
                 {
                     node.centerOfMass /= node.totalMass;
                 }
-                
             }
         }
         else

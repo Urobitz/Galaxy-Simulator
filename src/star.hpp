@@ -23,7 +23,6 @@ class Star
     {   
         
 
-        acceleration = sf::Vector2f(0.f, 0.f);
         velocity = sf::Vector2f(0.f, 0.f);
         mass = Random::getFloat(10.0f, 50.f);
     }

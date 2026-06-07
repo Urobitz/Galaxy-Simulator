@@ -18,7 +18,7 @@ int main()
 {
 
     //Initialize universe
-    Universe universe(5000);
+    Universe universe(9000);
     //Initialize the main window
     Renderer renderer(SCREEN_WIDTH, SCREEN_HEIGHT, "Universe Generator");
     //Quadtree test
@@ -40,6 +40,7 @@ int main()
         universe.updateStars(dt);
         renderer.clearWindow();
         renderer.drawUniverse(universe);
+        renderer.drawQuadTree(universe.getQuadTree());
         renderer.displayWindow();
 
     }
