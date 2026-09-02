@@ -36,8 +36,26 @@ void Universe::setStarCount(int newStarCount)
 
 void Universe::updateStars(float dt)
 {
-    //COMPLETE
-    
+    for (int i = 0; i < starCount; i++)
+    {
+        sf::Vector2f totalForce(0.f, 0.f);
+
+        for (int j = 0; j < starCount; j++)
+        {
+            if (i != j)
+            {
+                totalForce += calculateForce(stars[i], stars[j]);
+            }
+        }
+
+        sf::Vector2f acceleration = totalForce / stars[i].getMass();
+        sf::Vector2f velocity = stars[i].getVelocity() + acceleration * dt;
+        sf::Vector2f position = stars[i].getPosition() + velocity * dt;
+
+        stars[i].setAcceleration(acceleration);
+        stars[i].setVelocity(velocity);
+        stars[i].setPosition(position);
+    }
 
 }
 
